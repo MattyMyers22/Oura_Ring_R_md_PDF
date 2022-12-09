@@ -1,7 +1,3 @@
-# Oura Ring Analysis Dashboard
-
-# Matthew Myers
-
 # load csv of choice
 data <- read.csv(file.choose())
 
@@ -9,9 +5,10 @@ data <- read.csv(file.choose())
 str(data)
 
 # packages
-library(lubridate) #load lubridate for working with dates
-library(dplyr) #dplyr for manipulated data
-library(ggplot2) #for visualizations
+library(lubridate) # load lubridate for working with dates
+library(dplyr) # dplyr for manipulated data
+library(ggplot2) # for visualizations
+library(rmarkdown) # to create report
 
 # convert date to date type
 data$date <- as.Date(data$date, format="%m/%d/%Y")
