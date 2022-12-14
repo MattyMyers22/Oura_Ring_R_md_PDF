@@ -20,7 +20,7 @@ library(rmarkdown) # to create report
 
 ```{r data manipulation}
 # convert date to date type
-data$date <- as.Date(data$date, format="%m/%d/%Y")
+data$date <- as.Date(data$date, format="%Y-%m-%d")
 
 # select desired columns
 sel_data <- data %>%
@@ -276,5 +276,5 @@ the future?
 
 ```{r column names}
 # get original column names of data
-colnames(sel_data)[1:14]
+colnames(data)
 ```

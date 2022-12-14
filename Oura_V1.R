@@ -11,7 +11,7 @@ library(ggplot2) # for visualizations
 library(rmarkdown) # to create report
 
 # convert date to date type
-data$date <- as.Date(data$date, format="%m/%d/%Y")
+data$date <- as.Date(data$date, format="%Y-%m-%d")
 
 # select desired columns
 sel_data <- data %>%
@@ -227,4 +227,4 @@ ggplot(past_90_days, aes(date, Inactive.Time)) +
                              digits = 2)))
 
 # Get original column names from data
-colnames(sel_data)[1:14]
+colnames(data)
