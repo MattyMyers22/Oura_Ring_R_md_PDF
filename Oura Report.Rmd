@@ -9,12 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
 ```{r load csv and packages, warning = FALSE, message = FALSE}
 data <- read.csv(file.choose()) # load csv of choice
 
@@ -24,12 +18,263 @@ library(ggplot2) # for visualizations
 library(rmarkdown) # to create report
 ```
 
-## Including Plots
+```{r data manipulation}
+# convert date to date type
+data$date <- as.Date(data$date, format="%m/%d/%Y")
 
-You can also embed plots, for example:
+# select desired columns
+sel_data <- data %>%
+  select(date, Total.Sleep.Duration, REM.Sleep.Duration, Light.Sleep.Duration, 
+         Deep.Sleep.Duration, Sleep.Efficiency, Average.Resting.Heart.Rate,
+         Lowest.Resting.Heart.Rate, Average.HRV, Respiratory.Rate, 
+         Activity.Burn, Steps, Inactive.Time, Long.Periods.of.Inactivity)
 
-```{r pressure}
-plot(pressure)
+# seconds to hours function
+sec_to_hour <- function(x) x/3600
+
+# apply seconds to hours function to time duration columns
+sel_data[c('Total.Sleep.Duration', 'REM.Sleep.Duration', 'Light.Sleep.Duration',
+           'Deep.Sleep.Duration', 'Inactive.Time')] <- lapply(sel_data[
+             c('Total.Sleep.Duration', 'REM.Sleep.Duration', 
+               'Light.Sleep.Duration', 'Deep.Sleep.Duration', 'Inactive.Time')],
+             sec_to_hour)
+
+# create % of hours slept for each sleep cycle columns
+sel_data$perc_REM <- sel_data$REM.Sleep.Duration / 
+  sel_data$Total.Sleep.Duration * 100
+
+sel_data$perc_Light <- sel_data$Light.Sleep.Duration / 
+  sel_data$Total.Sleep.Duration * 100
+
+sel_data$perc_Deep <- sel_data$Deep.Sleep.Duration / 
+  sel_data$Total.Sleep.Duration * 100
+
+# create quarter with year column
+sel_data$qtr_yr <- paste(quarters(sel_data$date), year(sel_data$date))
+
+# initialize empty vector for ordered quarter and year pairs
+factored_qtrs <- c()
+
+# nested for loops to create ordered vector of quarter + year
+for (yr in unique(year(sel_data$date)))
+{
+  
+  for (qtr in unique(quarters(sel_data$date)))
+  {
+    factored_qtrs = c(factored_qtrs, paste(qtr, yr))
+  }
+}
+
+# set qtr_yr as a factor and set factor levels
+sel_data$qtr_yr <- as.factor(sel_data$qtr_yr)
+sel_data$qtr_yr <- factor(sel_data$qtr_yr, levels = factored_qtrs)
+
+# Get data for past 90 days
+past_90_days <- sel_data %>%
+  filter(date >= max(date) - days(89))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Sleep
+
+### January 2020 - Present
+
+```{r all time sleep duration, warning = FALSE}
+# look at total sleep over time
+ggplot(sel_data, aes(qtr_yr, Total.Sleep.Duration)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = mean(Total.Sleep.Duration, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Total Sleep Duration by Quarters", x = "Quarter by Year",
+       y = "Total Sleep in Hours",
+       caption = paste("Dashed line represents the average time slept of",
+                       round(mean(sel_data$Total.Sleep.Duration, na.rm=TRUE), 
+                             digits = 2), "hours."))
+```
+
+```{r Create Sleep Cycle Dataframes, message = FALSE}
+# create dataframe for REM cycle stats
+rem_sleep <- sel_data %>%
+  select(date, qtr_yr, REM.Sleep.Duration, perc_REM) %>%
+  mutate(cycle = 'REM') %>%
+  rename(cycle_duration = REM.Sleep.Duration, perc_duration = perc_REM)
+
+# create dataframe for light cycle stats
+light_sleep <- sel_data %>%
+  select(date, qtr_yr, Light.Sleep.Duration, perc_Light) %>%
+  mutate(cycle = 'Light') %>%
+  rename(cycle_duration = Light.Sleep.Duration, perc_duration = perc_Light)
+
+# create dataframe for deep cycle stats
+deep_sleep <- sel_data %>%
+  select(date, qtr_yr, Deep.Sleep.Duration, perc_Deep) %>%
+  mutate(cycle = 'Deep') %>%
+  rename(cycle_duration = Deep.Sleep.Duration, perc_duration = perc_Deep)
+
+# union all from sleep cycle stat df's into one dataframe
+sleep_cycles <- union_all(rem_sleep, deep_sleep)
+
+# create dataframe of sleep cycle averages by qtr
+avg_qtr_cycles <- sleep_cycles %>% 
+  group_by(cycle, qtr_yr) %>%
+  summarize(avg_cycle_duration = mean(cycle_duration, na.rm = TRUE),
+            avg_perc_duration = mean(perc_duration, na.rm = TRUE))
+```
+
+```{r Sleep Cycle Quarters}
+# visualize percentage of sleep in each sleep cycle
+ggplot(avg_qtr_cycles, aes(qtr_yr, avg_cycle_duration, fill = cycle)) +
+  geom_col(position = 'dodge') +
+  labs(title = "Average Nightly Sleep Cycle Duration by Quarter",
+       x = "Quarter by Year", y = "Duration in Hours", caption = 
+       "As per the Oura ring app, on average the optimal amount of REM sleep 
+       hours starts with 1.5. For Deep sleep, it is 1 - 1.5 hours. Both are 
+       expected to decrease with age.")
+```
+
+## Past 90 Days
+
+```{r Total Sleep Past 90 Days}
+# Total Sleep Duration Past 90 Days
+ggplot(past_90_days, aes(date, Total.Sleep.Duration)) +
+  geom_area(fill = "forestgreen") +
+  geom_hline(aes(yintercept = mean(Total.Sleep.Duration, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Total Sleep Duration Past 90 Days", x = "Date",
+       y = "Total Sleep in Hours",
+       caption = paste("Dashed line represents the mean time slept of",
+                       round(mean(past_90_days$Total.Sleep.Duration, na.rm=TRUE), 
+                             digits = 2), "hours."))
+```
+
+```{r create past 90 day cycle dataframe}
+# create dataframe for REM cycle stats past 90
+rem_sleep_past_90 <- past_90_days %>%
+  select(date, qtr_yr, REM.Sleep.Duration, perc_REM) %>%
+  mutate(cycle = 'REM') %>%
+  rename(cycle_duration = REM.Sleep.Duration, perc_duration = perc_REM)
+
+# create dataframe for deep cycle stats past 90
+deep_sleep_past_90 <- past_90_days %>%
+  select(date, qtr_yr, Deep.Sleep.Duration, perc_Deep) %>%
+  mutate(cycle = 'Deep') %>%
+  rename(cycle_duration = Deep.Sleep.Duration, perc_duration = perc_Deep)
+
+# union all from sleep cycle stat df's into one dataframe
+sleep_cycles_past_90 <- union_all(rem_sleep_past_90, deep_sleep_past_90)
+```
+
+```{r Sleep Cycle Past 90 Days}
+# Sleep Cycles Past 90 days
+ggplot(sleep_cycles_past_90, aes(date, cycle_duration, color = cycle)) +
+  geom_line() +
+  labs(title = "Sleep Cycle Duration Past 90 Days",
+       x = "Date", y = "Duration in Hours", caption = 
+         "As per the Oura ring app, on average the optimal amount of REM sleep 
+       hours starts with 1.5. For Deep sleep, it is 1 - 1.5 hours. Both are 
+       expected to decrease with age. Dashed line added for 1.5 hour 
+       reference.") +
+  geom_hline(aes(yintercept = 1.5), linetype = "dashed")
+```
+
+## Heart Rate Variability
+
+### January 2020 - Present
+
+```{r HRV All time, warning = FALSE}
+# look at avg HRV over time
+ggplot(sel_data, aes(x = qtr_yr, y = Average.HRV)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = mean(Average.HRV, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Average HRV by Quarters", x = "Quarter by Year",
+       y = "Average HRV at Night",
+       caption = paste("Dashed line represents overall average HRV of",
+                       round(mean(sel_data$Average.HRV, na.rm=TRUE), 
+                             digits = 2)))
+
+```
+
+### Past 90 Days
+
+```{r HRV Past 90 Days}
+# HRV Past 90 Days
+ggplot(past_90_days, aes(date, Average.HRV)) +
+  geom_area(fill = "maroon") +
+  geom_hline(aes(yintercept = mean(Average.HRV, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Average HRV Past 90 Days", x = "Date",
+       y = "Average HRV at Night",
+       caption = paste("Dashed line represents average HRV of",
+                       round(mean(past_90_days$Average.HRV, na.rm=TRUE), 
+                             digits = 2)))
+```
+
+## Activity
+
+### January 2020 - Present
+
+``` {r steps all time}
+# steps over time
+ggplot(sel_data, aes(date, Steps)) +
+  geom_line() +
+  geom_hline(aes(yintercept = mean(Steps, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Daily Steps Over Time", x = "Date",
+       y = "Daily Steps",
+       caption = paste("Dashed line represents overall average daily steps of",
+                       round(mean(sel_data$Steps, na.rm=TRUE), 
+                             digits = 2)))
+```
+
+``` {r inactivity all time}
+# Inactive Time by Date
+ggplot(sel_data, aes(date, Inactive.Time)) +
+  geom_line() +
+  geom_hline(aes(yintercept = mean(Inactive.Time, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Daily Inactive Hours by Date", x = "Date",
+       y = "Inactive Hours",
+       caption = paste("Dashed line represents overall average daily 
+                       inactive hours of", round(mean(sel_data$Inactive.Time, 
+                                                   na.rm=TRUE), digits = 2)))
+```
+
+### Past 90 Days
+
+```{r Daily Steps Past 90}
+# Steps Past 90 Days
+ggplot(past_90_days, aes(date, Steps)) +
+  geom_area(fill = "orange") +
+  geom_hline(aes(yintercept = mean(Steps, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Daily Steps Past 90 Days", x = "Date",
+       y = "Daily Steps",
+       caption = paste("Dashed line represents average daily steps of",
+                       round(mean(past_90_days$Steps, na.rm=TRUE), 
+                             digits = 2)))
+```
+
+```{r Inactive Time Past 90}
+# Inactive Time Past 90 Days
+ggplot(past_90_days, aes(date, Inactive.Time)) +
+  geom_area(fill = "deeppink") +
+  geom_hline(aes(yintercept = mean(Inactive.Time, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Daily Inactive Hours Past 90 Days", x = "Date",
+       y = "Inactive Hours",
+       caption = paste("Dashed line represents average daily 
+                       inactive hours of", 
+                       round(mean(past_90_days$Inactive.Time, na.rm=TRUE), 
+                             digits = 2)))
+```
+
+## Data Available
+
+Below is a list of the data currently available to export through Oura. Are
+there any specific data values or metrics that need to be assessed more in 
+the future?
+
+```{r column names}
+# get original column names of data
+colnames(sel_data)[1:14]
+```

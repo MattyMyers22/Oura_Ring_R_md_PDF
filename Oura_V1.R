@@ -151,6 +151,80 @@ ggplot(sel_data, aes(date, Inactive.Time)) +
                        inactive hours of", round(mean(sel_data$Inactive.Time, 
                                                    na.rm=TRUE), digits = 2)))
 
-# Get data for past 3 months
-past_3_months <- sel_data %>%
-  filter(date >= max(date) - months(3))
+# Get data for past 90 days
+past_90_days <- sel_data %>%
+  filter(date >= max(date) - days(89))
+
+# Total Sleep Duration Past 90 Days
+ggplot(past_90_days, aes(date, Total.Sleep.Duration)) +
+  geom_area(fill = "forestgreen") +
+  geom_hline(aes(yintercept = mean(Total.Sleep.Duration, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Total Sleep Duration Past 90 Days", x = "Date",
+       y = "Total Sleep in Hours",
+       caption = paste("Dashed line represents the mean time slept of",
+                       round(mean(past_90_days$Total.Sleep.Duration, na.rm=TRUE), 
+                             digits = 2), "hours."))
+
+# create dataframe for REM cycle stats past 90
+rem_sleep_past_90 <- past_90_days %>%
+  select(date, qtr_yr, REM.Sleep.Duration, perc_REM) %>%
+  mutate(cycle = 'REM') %>%
+  rename(cycle_duration = REM.Sleep.Duration, perc_duration = perc_REM)
+
+# create dataframe for deep cycle stats past 90
+deep_sleep_past_90 <- past_90_days %>%
+  select(date, qtr_yr, Deep.Sleep.Duration, perc_Deep) %>%
+  mutate(cycle = 'Deep') %>%
+  rename(cycle_duration = Deep.Sleep.Duration, perc_duration = perc_Deep)
+
+# union all from sleep cycle stat df's into one dataframe
+sleep_cycles_past_90 <- union_all(rem_sleep_past_90, deep_sleep_past_90)
+
+# Sleep Cycles Past 90 days
+ggplot(sleep_cycles_past_90, aes(date, cycle_duration, color = cycle)) +
+  geom_line() +
+  labs(title = "Sleep Cycle Duration Past 90 Days",
+       x = "Date", y = "Duration in Hours", caption = 
+         "As per the Oura ring app, on average the optimal amount of REM sleep 
+       hours starts with 1.5. For Deep sleep, it is 1 - 1.5 hours. Both are 
+       expected to decrease with age. Dashed line added for 1.5 hour 
+       reference.") +
+  geom_hline(aes(yintercept = 1.5), linetype = "dashed")
+
+# HRV Past 90 Days
+ggplot(past_90_days, aes(date, Average.HRV)) +
+  geom_area(fill = "maroon") +
+  geom_hline(aes(yintercept = mean(Average.HRV, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Average HRV Past 90 Days", x = "Date",
+       y = "Average HRV at Night",
+       caption = paste("Dashed line represents average HRV of",
+                       round(mean(past_90_days$Average.HRV, na.rm=TRUE), 
+                             digits = 2)))
+
+# Steps Past 90 Days
+ggplot(past_90_days, aes(date, Steps)) +
+  geom_area(fill = "orange") +
+  geom_hline(aes(yintercept = mean(Steps, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Daily Steps Past 90 Days", x = "Date",
+       y = "Daily Steps",
+       caption = paste("Dashed line represents average daily steps of",
+                       round(mean(past_90_days$Steps, na.rm=TRUE), 
+                             digits = 2)))
+
+# Inactive Time Past 90 Days
+ggplot(past_90_days, aes(date, Inactive.Time)) +
+  geom_area(fill = "deeppink") +
+  geom_hline(aes(yintercept = mean(Inactive.Time, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Daily Inactive Hours Past 90 Days", x = "Date",
+       y = "Inactive Hours",
+       caption = paste("Dashed line represents average daily 
+                       inactive hours of", 
+                       round(mean(past_90_days$Inactive.Time, na.rm=TRUE), 
+                             digits = 2)))
+
+# Get original column names from data
+colnames(sel_data)[1:14]
