@@ -18,7 +18,8 @@ sel_data <- data %>%
   select(date, Total.Sleep.Duration, REM.Sleep.Duration, Light.Sleep.Duration, 
          Deep.Sleep.Duration, Sleep.Efficiency, Average.Resting.Heart.Rate,
          Lowest.Resting.Heart.Rate, Average.HRV, Respiratory.Rate, 
-         Activity.Burn, Steps, Inactive.Time, Long.Periods.of.Inactivity)
+         Activity.Burn, Steps, Inactive.Time, Long.Periods.of.Inactivity, 
+         Restless.Sleep)
 
 # check structure of selected dataframe
 str(sel_data)
@@ -225,6 +226,75 @@ ggplot(past_90_days, aes(date, Inactive.Time)) +
                        inactive hours of", 
                        round(mean(past_90_days$Inactive.Time, na.rm=TRUE), 
                              digits = 2)))
+
+# Resting Heart Rate All Time
+ggplot(sel_data, aes(x = qtr_yr, y = Average.Resting.Heart.Rate)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = mean(Average.Resting.Heart.Rate, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Average Resting Heart Rate by Quarters", x = "Quarter by Year",
+       y = "Average Resting Heart Rate at Night",
+       caption = paste("Dashed line represents overall average resting heart
+                       rate of",
+                       round(mean(sel_data$Average.Resting.Heart.Rate, 
+                                  na.rm=TRUE), digits = 2)))
+
+# avg resting heart rate Past 90 Days
+ggplot(past_90_days, aes(date, Average.Resting.Heart.Rate)) +
+  geom_area(fill = "orange") +
+  geom_hline(aes(yintercept = mean(Average.Resting.Heart.Rate, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Average Resting Heart Rate Past 90 Days", x = "Date",
+       y = "Average Resting Heart Rate at Night",
+       caption = paste("Dashed line represents average resting heart rate of",
+                       round(mean(past_90_days$Average.Resting.Heart.Rate, 
+                                  na.rm=TRUE), digits = 2)))
+
+# respiratory rate all time
+ggplot(sel_data, aes(x = qtr_yr, y = Respiratory.Rate)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = mean(Respiratory.Rate, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Nightly Respiratory Rate by Quarters", x = "Quarter by Year",
+       y = "Respiratory Rate",
+       caption = paste("Dashed line represents overall average respiratory
+                       rate of",
+                       round(mean(sel_data$Respiratory.Rate, 
+                                  na.rm=TRUE), digits = 2)))
+
+# respiratory rate Past 90 Days
+ggplot(past_90_days, aes(date, Respiratory.Rate)) +
+  geom_area(fill = "lightblue") +
+  geom_hline(aes(yintercept = mean(Respiratory.Rate, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Nightly Respiratory Rate Past 90 Days", x = "Date",
+       y = "Respiratory Rate",
+       caption = paste("Dashed line represents average respiratory rate of",
+                       round(mean(past_90_days$Respiratory.Rate, 
+                                  na.rm=TRUE), digits = 2)))
+
+#sleep efficiency all time
+ggplot(sel_data, aes(x = qtr_yr, y = Sleep.Efficiency)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = mean(Sleep.Efficiency, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Sleep Efficiency Score by Quarters", x = "Quarter by Year",
+       y = "Sleep Efficiency Score",
+       caption = paste("Dashed line represents overall average sleep efficiency
+                       score of",
+                       round(mean(sel_data$Sleep.Efficiency, 
+                                  na.rm=TRUE), digits = 2)))
+
+# sleep efficiency Past 90 Days
+ggplot(past_90_days, aes(date, Sleep.Efficiency)) +
+  geom_area(fill = "forestgreen") +
+  geom_hline(aes(yintercept = mean(Sleep.Efficiency, na.rm=TRUE)), 
+             linetype = "dashed") +
+  labs(title = "Sleep Efficiency Score Past 90 Days", x = "Date",
+       y = "Sleep Efficiency Score",
+       caption = paste("Dashed line represents average sleep efficiency score
+                       of", round(mean(past_90_days$Sleep.Efficiency, 
+                                  na.rm=TRUE), digits = 2)))
 
 # Get original column names from data
 colnames(data)
